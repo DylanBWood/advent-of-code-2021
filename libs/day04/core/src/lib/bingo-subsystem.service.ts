@@ -22,6 +22,7 @@ export class BingoSubsystemService {
   public getAnswer(inputFilename: string): Observable<number> {
     if (RA.isNonEmptyString(inputFilename)) {
       // load input file
+      console.log(inputFilename);
 
       return of(400);
     } else {
