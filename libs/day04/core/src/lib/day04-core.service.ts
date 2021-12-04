@@ -1,11 +1,15 @@
 import { Injectable } from '@angular/core';
-import { of } from 'rxjs';
+import { Observable } from 'rxjs';
+
+import { BingoSubsystemService } from './bingo-subsystem.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class Day04CoreService {
-  answer$ = of(500);
+  constructor(private readonly bingoSubsystemService: BingoSubsystemService) {}
 
-  constructor() {}
+  public getAnswer(inputFilename: string): Observable<number> {
+    return this.bingoSubsystemService.getAnswer(inputFilename);
+  }
 }
