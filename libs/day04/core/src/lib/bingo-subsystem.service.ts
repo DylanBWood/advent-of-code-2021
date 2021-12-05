@@ -1,11 +1,24 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { filter, map, Observable, of, scan, switchMap, take, tap } from 'rxjs';
+import {
+  bufferCount,
+  filter,
+  last,
+  map,
+  Observable,
+  of,
+  scan,
+  switchMap,
+  switchMapTo,
+  take,
+  tap,
+} from 'rxjs';
 import * as R from 'ramda';
 import * as RA from 'ramda-adjunct';
 
 export interface BingoBoard {
   board: MarkedNumber[][];
+  index: number;
 }
 
 export interface BingoGame {
@@ -28,6 +41,122 @@ export interface TurnWinner {
   winningBoard: BingoBoard | null;
 }
 
+const getWinningBoard = (players: BingoBoard[]): BingoBoard | null => {
+  let winningBoard: BingoBoard | null = null;
+
+  players.forEach((board, playerIndex) => {
+    let winningColumn: number[] = [];
+    let winningRow: number[] = [];
+
+    for (
+      let colIndex = 0;
+      colIndex < BingoSubsystemService.BOARD_WIDTH;
+      colIndex++
+    ) {
+      const col = [];
+
+      for (
+        let rowIndex = 0;
+        rowIndex < BingoSubsystemService.BOARD_WIDTH;
+        rowIndex++
+      ) {
+        col.push(board.board[rowIndex][colIndex]);
+      }
+
+      const colNums = col
+        .filter((item) => item.marked)
+        .map((item) => item.number);
+
+      if (
+        RA.isNonEmptyArray(colNums) &&
+        colNums.length === BingoSubsystemService.BOARD_HEIGHT
+      ) {
+        winningColumn = [...colNums];
+      }
+    }
+
+    board.board.forEach((row) => {
+      const rowNums = row
+        .filter((item) => item.marked)
+        .map((item) => item.number);
+
+      if (
+        RA.isNonEmptyArray(rowNums) &&
+        rowNums.length === BingoSubsystemService.BOARD_HEIGHT
+      ) {
+        winningRow = [...rowNums];
+      }
+    });
+
+    if (RA.isNonEmptyArray(winningRow) || RA.isNonEmptyArray(winningColumn)) {
+      winningBoard = {
+        ...board,
+        index: playerIndex,
+      };
+    }
+  });
+
+  return winningBoard;
+};
+
+const getWinningBoards = (players: BingoBoard[]): BingoBoard[] => {
+  const winningBoards: BingoBoard[] = [];
+
+  players.forEach((board, playerIndex) => {
+    let winningColumn: number[] = [];
+    let winningRow: number[] = [];
+
+    for (
+      let colIndex = 0;
+      colIndex < BingoSubsystemService.BOARD_WIDTH;
+      colIndex++
+    ) {
+      const col = [];
+
+      for (
+        let rowIndex = 0;
+        rowIndex < BingoSubsystemService.BOARD_WIDTH;
+        rowIndex++
+      ) {
+        col.push(board.board[rowIndex][colIndex]);
+      }
+
+      const colNums = col
+        .filter((item) => item.marked)
+        .map((item) => item.number);
+
+      if (
+        RA.isNonEmptyArray(colNums) &&
+        colNums.length === BingoSubsystemService.BOARD_HEIGHT
+      ) {
+        winningColumn = [...colNums];
+      }
+    }
+
+    board.board.forEach((row) => {
+      const rowNums = row
+        .filter((item) => item.marked)
+        .map((item) => item.number);
+
+      if (
+        RA.isNonEmptyArray(rowNums) &&
+        rowNums.length === BingoSubsystemService.BOARD_HEIGHT
+      ) {
+        winningRow = [...rowNums];
+      }
+    });
+
+    if (RA.isNonEmptyArray(winningRow) || RA.isNonEmptyArray(winningColumn)) {
+      winningBoards.push({
+        ...board,
+        index: playerIndex,
+      });
+    }
+  });
+
+  return winningBoards;
+};
+
 @Injectable({
   providedIn: 'root',
 })
@@ -37,18 +166,90 @@ export class BingoSubsystemService {
 
   constructor(private httpClient: HttpClient) {}
 
-  public getAnswer(inputFilename: string): Observable<number> {
+  public getPartOneAnswer(inputFilename: string): Observable<number> {
     if (RA.isNonEmptyString(inputFilename)) {
-      // load input file
-      console.log(inputFilename);
-
-      return this.loadInputFile(inputFilename).pipe(tap(console.log));
+      return this.getBoardStates(inputFilename).pipe(
+        map(this.mapToTurnWinner),
+        filter((turnWinner) => RA.isNotNil(turnWinner.winningBoard)),
+        map((turnWinner: TurnWinner) => [
+          turnWinner.lastNumberDrawn,
+          turnWinner.winningBoard?.board
+            .reduce(
+              (acc, cur) => [
+                ...acc,
+                ...cur.filter((val) => !val.marked).map((val) => val.number),
+              ],
+              [] as number[]
+            )
+            .reduce((acc, cur) => acc + cur, 0),
+        ]),
+        map(([lastNumberDrawn, sumOfUnMarked]) =>
+          !!lastNumberDrawn && !!sumOfUnMarked
+            ? lastNumberDrawn * sumOfUnMarked
+            : 0
+        ),
+        take(1)
+      );
     } else {
       return of(-1);
     }
   }
 
-  loadInputFile(
+  public getPartTwoAnswer(inputFilename: string): Observable<number> {
+    if (RA.isNonEmptyString(inputFilename)) {
+      return this.getBoardStates(inputFilename).pipe(
+        bufferCount(2, 1),
+        map((val) => {
+          const turn: BingoTurn = val[1];
+
+          const winningBoards = getWinningBoards(turn.players);
+
+          return {
+            numberDrawn: turn.numberDrawn,
+            boards: winningBoards,
+            allWinners: turn.players.length === winningBoards.length,
+            previousWinners: getWinningBoards(val[0].players),
+          };
+        }),
+        filter((val) => val.allWinners),
+        take(1),
+        map(
+          (val) =>
+            ({
+              lastNumberDrawn: val.numberDrawn,
+              winningBoard: val.boards.filter(
+                (board) =>
+                  !val.previousWinners
+                    .map((item) => item.index)
+                    .includes(board.index)
+              )[0],
+            } as TurnWinner)
+        ),
+        map((turnWinner: TurnWinner) => [
+          turnWinner.lastNumberDrawn,
+          turnWinner.winningBoard?.board
+            .reduce(
+              (acc, cur) => [
+                ...acc,
+                ...cur.filter((val) => !val.marked).map((val) => val.number),
+              ],
+              [] as number[]
+            )
+            .reduce((acc, cur) => acc + cur, 0),
+        ]),
+        map(([lastNumberDrawn, sumOfUnMarked]) =>
+          !!lastNumberDrawn && !!sumOfUnMarked
+            ? lastNumberDrawn * sumOfUnMarked
+            : 0
+        ),
+        tap(console.log)
+      );
+    } else {
+      return of(-1);
+    }
+  }
+
+  getBoardStates(
     inputFilename: string
   ): Observable<BingoGame | null | string | string[] | any> {
     return this.httpClient.get(inputFilename, { responseType: 'text' }).pipe(
@@ -111,94 +312,11 @@ export class BingoSubsystemService {
             ),
           } as BingoTurn),
         {} as BingoTurn
-      ),
-      map(this.mapToTurnWinner),
-      filter((turnWinner) => RA.isNotNil(turnWinner.winningBoard)),
-      tap(console.log),
-      map((turnWinner: TurnWinner) => [
-        turnWinner.lastNumberDrawn,
-        turnWinner.winningBoard?.board
-          .reduce(
-            (acc, cur) => [
-              ...acc,
-              ...cur.filter((val) => !val.marked).map((val) => val.number),
-            ],
-            [] as number[]
-          )
-          .map((val) => {
-            console.log(val);
-            return val;
-          })
-          .reduce((acc, cur) => acc + cur),
-      ]),
-      map(
-        ([lastNumberDrawn, sumOfUnMarked]) => lastNumberDrawn * sumOfUnMarked
-      ),
-      take(1)
+      )
     );
   }
 
   mapToTurnWinner(turn: BingoTurn): TurnWinner {
-    const getWinningBoard = (players: BingoBoard[]): BingoBoard | null => {
-      let winningBoard: BingoBoard | null = null;
-
-      players.forEach((board) => {
-        let winningColumn: number[] = [];
-        let winningRow: number[] = [];
-
-        for (
-          let colIndex = 0;
-          colIndex < BingoSubsystemService.BOARD_WIDTH;
-          colIndex++
-        ) {
-          const col = [];
-
-          for (
-            let rowIndex = 0;
-            rowIndex < BingoSubsystemService.BOARD_WIDTH;
-            rowIndex++
-          ) {
-            col.push(board.board[rowIndex][colIndex]);
-          }
-
-          const colNums = col
-            .filter((item) => item.marked)
-            .map((item) => item.number);
-
-          if (
-            RA.isNonEmptyArray(colNums) &&
-            colNums.length === BingoSubsystemService.BOARD_HEIGHT
-          ) {
-            winningColumn = [...colNums];
-          }
-        }
-
-        board.board.forEach((row) => {
-          const rowNums = row
-            .filter((item) => item.marked)
-            .map((item) => item.number);
-
-          if (
-            RA.isNonEmptyArray(rowNums) &&
-            rowNums.length === BingoSubsystemService.BOARD_HEIGHT
-          ) {
-            winningRow = [...rowNums];
-          }
-        });
-
-        if (
-          RA.isNonEmptyArray(winningRow) ||
-          RA.isNonEmptyArray(winningColumn)
-        ) {
-          console.log('winningRow', winningRow);
-          console.log('winningColumn', winningColumn);
-          winningBoard = board;
-        }
-      });
-
-      return winningBoard;
-    };
-
     return {
       lastNumberDrawn: turn.numberDrawn,
       winningBoard: getWinningBoard(turn.players),

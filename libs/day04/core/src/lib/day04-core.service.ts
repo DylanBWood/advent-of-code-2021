@@ -9,7 +9,11 @@ import { BingoSubsystemService } from './bingo-subsystem.service';
 export class Day04CoreService {
   constructor(private readonly bingoSubsystemService: BingoSubsystemService) {}
 
-  public getAnswer(inputFilename: string): Observable<number> {
-    return this.bingoSubsystemService.getAnswer(inputFilename);
+  public getPartOneAnswer(inputFilename: string): Observable<number> {
+    return this.bingoSubsystemService.getPartOneAnswer(inputFilename);
+  }
+
+  public getPartTwoAnswer(inputFilename: string): Observable<number> {
+    return this.bingoSubsystemService.getPartTwoAnswer(inputFilename);
   }
 }
