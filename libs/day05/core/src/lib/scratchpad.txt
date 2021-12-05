@@ -1,0 +1,25 @@
+Start:              End:
+0,9 -> 5,9          5
+8,0 -> 0,8
+9,4 -> 3,4
+
+Point
+  [x:number, y:number]
+
+Vent
+  start: Point
+  end: Point
+
+loadFileText str -> str
+parseFileText str -> Vent[]
+  parse str -> Vent[]
+  parseRegex str -> Vent[]
+onlyHorizontalOrVerticalLines Vent[] -> Vent[]
+createVentDiagram Vent[] -> number[][]
+mapDiagramToText number[][] -> str
+drawVentDiagram str -> void
+numPointsOfOverlap number[][] -> number
+
+
+
+
