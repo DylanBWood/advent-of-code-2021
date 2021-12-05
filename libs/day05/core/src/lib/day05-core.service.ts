@@ -17,7 +17,7 @@ export class Day05CoreService {
     );
   }
 
-  getPart2Answer(inputFilename: string): Observable<number | any> {
+  getPart2Answer(inputFilename: string): Observable<number> {
     return this.loadFileText(inputFilename).pipe(
       map(Helpers.parseFileText),
       map(Helpers.onlyHorizontalVerticalOrDiagonalLines),
