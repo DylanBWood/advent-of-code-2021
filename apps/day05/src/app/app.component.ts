@@ -12,6 +12,7 @@ export class AppComponent {
   title = 'day05';
 
   answer$ = this.day05CoreService.getAnswer(environment.inputFile);
+  answerPart2$ = this.day05CoreService.getPart2Answer(environment.inputFile);
 
   constructor(private day05CoreService: Day05CoreService) {}
 }
