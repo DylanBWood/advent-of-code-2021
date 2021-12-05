@@ -15,7 +15,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@day04/core": ["libs/day04/core/src/index.ts"]
+      "@day04/core": ["libs/day04/core/src/index.ts"],
+      "@day05/core": ["libs/day05/core/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
