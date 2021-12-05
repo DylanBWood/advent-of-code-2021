@@ -102,12 +102,10 @@ export const createVentDiagramWithDiagonals = (vents: Vent[]): number[][] => {
     const maxX = Math.max(vent.start[0], vent.end[0]);
 
     if (isVertical(vent)) {
-      console.log('vertical', vent);
       for (let i = minY; i <= maxY; i++) {
         diagram[i][vent.start[0]]++;
       }
     } else if (isHorizontal(vent)) {
-      console.log('horizontal', vent);
       for (let i = minX; i <= maxX; i++) {
         diagram[vent.start[1]][i]++;
       }
