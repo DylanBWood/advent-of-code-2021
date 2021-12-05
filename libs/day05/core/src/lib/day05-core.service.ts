@@ -8,12 +8,12 @@ import { Helpers } from './helpers';
   providedIn: 'root',
 })
 export class Day05CoreService {
-  getAnswer(inputFilename: string): Observable<number> {
+  getAnswer(inputFilename: string): Observable<number | any> {
     return this.loadFileText(inputFilename).pipe(
       map(Helpers.parseFileText),
       map(Helpers.onlyHorizontalOrVerticalLines),
-      tap(console.log),
-      switchMapTo(of(50))
+      map(Helpers.createVentDiagram),
+      map(Helpers.numPointsOfOverlapOver2)
     );
   }
 
