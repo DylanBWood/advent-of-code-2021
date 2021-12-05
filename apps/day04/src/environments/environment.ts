@@ -4,6 +4,7 @@
 
 export const environment = {
   production: false,
+  inputFile: 'assets/day04_example.txt',
 };
 
 /*
